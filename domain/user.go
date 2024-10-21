@@ -5,6 +5,7 @@ type UserPayload struct {
 	Password string `json :  "password"`
 	Active   string `json :  "active"`
 	Id       string `json :  "id"`
+	Email    string `json: "email"`
 }
 
 type GeneralResponseResource struct {

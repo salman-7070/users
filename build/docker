@@ -1,0 +1,20 @@
+FROM centos AS builder
+
+RUN mkdir app
+
+WORKDIR /app
+
+# Copy the code into the container
+COPY . .
+
+RUN chmod 777 USER_TEST
+
+EXPOSE 8080
+
+# Build a small image
+FROM scratch
+
+COPY --from=builder /app .
+
+# Command to run
+CMD ["./USER_TEST"]

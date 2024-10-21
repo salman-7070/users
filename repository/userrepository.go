@@ -14,6 +14,7 @@ type IUserRepository interface {
 	Update(Obj *domain.UserPayload) bool
 	GetAllUserData() ([]domain.UserPayload, bool)
 	Delete(Username string) bool
+	GetByUsername(Username string) (domain.UserPayload, bool)
 }
 
 type UserRepository struct{}
@@ -35,12 +36,14 @@ func (mRepo UserRepository) Create(Obj *domain.UserPayload) bool {
 	//I used $1 as a placeholder because I am using PostgreSQL as the database driver.
 	err := myDb.QueryRow(`INSERT  INTO users ( username,
 												password,
-												active)
-												VALUES($1, $2, $3) RETURNING id`,
+												active,
+												email)
+												VALUES($1,$2,$3,$4) RETURNING id`,
 
 		Obj.Username,
 		Obj.Password,
-		Obj.Active).Scan(&Obj.Id)
+		Obj.Active,
+		Obj.Email).Scan(&Obj.Id)
 
 	if err != nil {
 		log.Println("UserRepository Create :qStmt Exec ", err)
@@ -67,15 +70,17 @@ func (mRepo UserRepository) Update(Obj *domain.UserPayload) bool {
 	//Here iam using id as the unique identifier for updating user details or we can use username also
 	QRows, err := myDb.Query(`UPDATE users  SET      username=$1,
 												     password=$2,
-												     active=$3
-													 WHERE id=$4 `,
+												     active=$3,
+													 email=$4
+													 WHERE id=$5 `,
 		Obj.Username,
 		Obj.Password,
 		Obj.Active,
+		Obj.Email,
 		Obj.Id)
 
 	if err != nil {
-		log.Println("UserRepository UpdateBeneficiaryMaster :Querry Exec ", err)
+		log.Println("UserRepository UpdateBeneficiaryMaster :Query Exec ", err)
 		return false
 	}
 	//defer func will exicute at the end of the method
@@ -105,7 +110,8 @@ func (mRepo UserRepository) GetAllUserData() ([]domain.UserPayload, bool) {
 	QRows, err := myDb.Query(`select    id,
 										username,
 										password,
-										active
+										active,
+										email
 										FROM users`)
 
 	if err != nil {
@@ -120,7 +126,8 @@ func (mRepo UserRepository) GetAllUserData() ([]domain.UserPayload, bool) {
 			&myResult.Id,
 			&myResult.Username,
 			&myResult.Password,
-			&myResult.Active)
+			&myResult.Active,
+			&myResult.Email)
 
 		if err != nil {
 			log.Println("UserRepository GetAllUserData : qResult.Scan", err)
@@ -136,6 +143,43 @@ func (mRepo UserRepository) GetAllUserData() ([]domain.UserPayload, bool) {
 	log.Println("UserRepository GetAllUserData Success")
 
 	return myResults, true
+}
+
+func (mRepo UserRepository) GetByUsername(Username string) (domain.UserPayload, bool) {
+
+	defer common.PanicRecovery("UserRepository", "GetAllUserData")
+
+	//variable for returning array of data
+	myResult := domain.UserPayload{}
+
+	//for datbase connection
+	myDb, result := common.GetDBConnection()
+
+	if !result {
+		log.Println("UserRepository GetAllUserData :myDb OpenConnection")
+		return myResult, false
+	}
+
+	err := myDb.QueryRow(`select    id,
+										username,
+										password,
+										active,
+										email
+										FROM users
+										where username=$1`, Username).Scan(&myResult.Id,
+		&myResult.Username,
+		&myResult.Password,
+		&myResult.Active,
+		&myResult.Email)
+
+	if err != nil {
+		log.Println("UserRepository GetAllUserData : qResult.Scan", err)
+		return myResult, false
+	}
+
+	log.Println("UserRepository GetAllUserData Success")
+
+	return myResult, true
 }
 
 func (mRepo UserRepository) Delete(Username string) bool {
